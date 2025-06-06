@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE打字效果演示</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .demo-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .demo-list li {
+            margin-bottom: 15px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .demo-list a {
+            display: block;
+            font-size: 18px;
+            color: #4caf50;
+            text-decoration: none;
+            margin-bottom: 5px;
+        }
+        .demo-list a:hover {
+            color: #45a049;
+            text-decoration: underline;
+        }
+        .demo-list p {
+            margin: 5px 0 0 0;
+            color: #666;
+        }
+        .code {
+            font-family: monospace;
+            background-color: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSE打字效果演示</h1>
+        
+        <p>这个项目演示了如何使用Server-Sent Events (SSE)技术实现打字效果。以下是可用的演示页面:</p>
+        
+        <ul class="demo-list">
+            <li>
+                <a href="/simple.html">简单SSE打字效果</a>
+                <p>一个简洁的示例，展示SSE的基本用法和打字效果。包含三种预设的响应模式。</p>
+            </li>
+            <li>
+                <a href="/index.html">聊天界面</a>
+                <p>一个模仿聊天应用的界面，使用SSE实现AI回复的打字效果。</p>
+            </li>
+            <li>
+                <a href="/websocket.html">WebSocket打字效果</a>
+                <p>使用WebSocket技术实现双向通信和打字效果，与SSE形成对比。</p>
+            </li>
+        </ul>
+        
+        <h2>实时通信技术比较</h2>
+        <p>
+            <strong>Server-Sent Events (SSE)</strong> 是一种允许服务器向客户端推送数据的HTTP技术。
+            SSE是单向的，只能从服务器发送到客户端。
+            SSE特别适合于需要服务器实时推送数据的场景，如通知、更新或像本演示中的打字效果。
+        </p>
+        <p>
+            <strong>WebSocket</strong> 是一种在单个TCP连接上提供全双工通信通道的协议。
+            WebSocket允许服务器和客户端之间进行双向实时通信，适合需要频繁双向交互的场景。
+            本项目同时提供了两种技术的实现，便于比较它们的特点和适用场景。
+        </p>
+        
+        <h2>技术实现</h2>
+        <p>
+            前端使用<span class="code">fetch API</span>与<span class="code">ReadableStream</span>处理流数据。
+            后端使用Koa.js创建SSE流，逐字符发送响应。
+        </p>
+        
+        <p style="margin-top: 30px; text-align: center; color: #999;">
+            SSE Demo - 2025
+        </p>
+    </div>
+</body>
+</html>

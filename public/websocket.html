@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket打字效果演示</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-color: #ddd;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .section {
+            display: none;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .section.active {
+            display: block;
+        }
+        .status {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-connected {
+            background-color: #4caf50;
+        }
+        .status-disconnected {
+            background-color: #f44336;
+        }
+        .status-connecting {
+            background-color: #ff9800;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+        .connection-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .console {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #2c3e50;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-bottom: 20px;
+        }
+        .console-entry {
+            margin-bottom: 6px;
+            padding: 4px;
+            border-radius: 4px;
+        }
+        .console-entry.sent {
+            background-color: rgba(76, 175, 80, 0.2);
+            border-left: 3px solid #4caf50;
+        }
+        .console-entry.received {
+            background-color: rgba(33, 150, 243, 0.2);
+            border-left: 3px solid #2196f3;
+        }
+        .console-entry.system {
+            color: #ff9800;
+            font-style: italic;
+        }
+        .console-entry.error {
+            color: #f44336;
+            border-left: 3px solid #f44336;
+        }
+        .console-time {
+            color: #aaa;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .typing-area {
+            height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            font-size: 18px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 18px;
+            background-color: #333;
+            margin-left: 1px;
+            vertical-align: middle;
+            animation: cursor-blink 1s infinite step-start;
+        }
+        @keyframes cursor-blink {
+            50% { opacity: 0; }
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input, button, textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+        }
+        input, textarea {
+            flex: 1;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            white-space: nowrap;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .examples {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .examples button {
+            flex: 1;
+            min-width: 120px;
+        }
+        .code {
+            font-family: monospace;
+            background-color: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: monospace;
+            margin: 0;
+        }
+        .explanation {
+            margin-top: 30px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .explanation h3 {
+            margin-top: 0;
+        }
+        .heartbeat {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket打字效果演示</h1>
+        
+        <div class="status">
+            <div>
+                <span class="status-indicator status-disconnected" id="statusIndicator"></span>
+                <span id="connectionStatus">未连接</span>
+            </div>
+            <div class="heartbeat" id="lastHeartbeat"></div>
+        </div>
+        
+        <div class="connection-controls">
+            <button id="connectButton">连接到WebSocket服务器</button>
+            <button id="disconnectButton" disabled>断开连接</button>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="demo">打字效果演示</div>
+            <div class="tab" data-tab="console">WebSocket控制台</div>
+        </div>
+        
+        <div class="section active" id="demoSection">
+            <h3>WebSocket打字效果</h3>
+            <p>在下方输入一段文本，点击"发送消息"按钮，服务器将模拟打字效果返回内容。</p>
+            
+            <div class="examples">
+                <button id="example1">问候示例</button>
+                <button id="example2">长段落示例</button>
+                <button id="example3">代码示例</button>
+            </div>
+            
+            <div class="input-container">
+                <textarea id="messageInput" placeholder="在这里输入要发送的消息..."></textarea>
+                <button id="sendButton" disabled>发送消息</button>
+            </div>
+            
+            <div class="typing-area" id="typingArea">
+                <!-- 打字内容将在这里显示 -->
+                <span id="typingCursor" class="typing-cursor"></span>
+            </div>
+        </div>
+        
+        <div class="section" id="consoleSection">
+            <h3>WebSocket通信日志</h3>
+            <p>这里显示与服务器之间的所有WebSocket通信。</p>
+            
+            <div class="input-container">
+                <input type="text" id="customMessageInput" placeholder="输入自定义JSON消息...">
+                <button id="sendCustomButton" disabled>发送</button>
+                <button id="pingButton" disabled>Ping</button>
+                <button id="clearButton">清除日志</button>
+            </div>
+            
+            <div class="console" id="console">
+                <!-- 控制台日志将在这里显示 -->
+            </div>
+            
+            <div>
+                <h4>测试消息格式：</h4>
+                <pre>{
+  "type": "chat",
+  "message": "测试消息内容"
+}</pre>
+            </div>
+        </div>
+        
+        <div class="explanation">
+            <h3>WebSocket vs SSE 比较</h3>
+            <p>
+                <strong>WebSocket</strong>是一种在单个TCP连接上提供全双工通信通道的协议。WebSocket允许服务器和客户端之间进行双向实时通信。
+                相比之下，<strong>Server-Sent Events (SSE)</strong>是单向的，只允许服务器向客户端推送数据。
+            </p>
+            <p>
+                <strong>WebSocket优点：</strong>
+                <ul>
+                    <li>支持双向通信</li>
+                    <li>更好的实时性能</li>
+                    <li>支持二进制数据传输</li>
+                </ul>
+            </p>
+            <p>
+                <strong>SSE优点：</strong>
+                <ul>
+                    <li>实现简单（基于HTTP）</li>
+                    <li>自动重连机制</li>
+                    <li>与现有HTTP基础设施更兼容</li>
+                </ul>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM元素
+            const statusIndicator = document.getElementById('statusIndicator');
+            const connectionStatus = document.getElementById('connectionStatus');
+            const lastHeartbeat = document.getElementById('lastHeartbeat');
+            const connectButton = document.getElementById('connectButton');
+            const disconnectButton = document.getElementById('disconnectButton');
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const typingArea = document.getElementById('typingArea');
+            const typingCursor = document.getElementById('typingCursor');
+            const consoleArea = document.getElementById('console');
+            const customMessageInput = document.getElementById('customMessageInput');
+            const sendCustomButton = document.getElementById('sendCustomButton');
+            const pingButton = document.getElementById('pingButton');
+            const clearButton = document.getElementById('clearButton');
+            const example1 = document.getElementById('example1');
+            const example2 = document.getElementById('example2');
+            const example3 = document.getElementById('example3');
+            const tabs = document.querySelectorAll('.tab');
+            const sections = document.querySelectorAll('.section');
+            
+            // WebSocket连接
+            let socket = null;
+            
+            // 状态更新函数
+            function updateStatus(status) {
+                switch(status) {
+                    case 'connected':
+                        statusIndicator.className = 'status-indicator status-connected';
+                        connectionStatus.textContent = '已连接';
+                        connectButton.disabled = true;
+                        disconnectButton.disabled = false;
+                        sendButton.disabled = false;
+                        sendCustomButton.disabled = false;
+                        pingButton.disabled = false;
+                        break;
+                    case 'connecting':
+                        statusIndicator.className = 'status-indicator status-connecting';
+                        connectionStatus.textContent = '连接中...';
+                        connectButton.disabled = true;
+                        disconnectButton.disabled = true;
+                        sendButton.disabled = true;
+                        sendCustomButton.disabled = true;
+                        pingButton.disabled = true;
+                        break;
+                    case 'disconnected':
+                        statusIndicator.className = 'status-indicator status-disconnected';
+                        connectionStatus.textContent = '未连接';
+                        connectButton.disabled = false;
+                        disconnectButton.disabled = true;
+                        sendButton.disabled = true;
+                        sendCustomButton.disabled = true;
+                        pingButton.disabled = true;
+                        lastHeartbeat.textContent = '';
+                        break;
+                }
+            }
+            
+            // 添加控制台日志
+            function addConsoleLog(message, type = 'system') {
+                const now = new Date();
+                const time = now.toLocaleTimeString('zh-CN');
+                
+                const entry = document.createElement('div');
+                entry.className = `console-entry ${type}`;
+                
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'console-time';
+                timeSpan.textContent = time;
+                entry.appendChild(timeSpan);
+                
+                let content = '';
+                if (typeof message === 'object') {
+                    content = JSON.stringify(message, null, 2);
+                } else {
+                    content = message;
+                }
+                
+                const contentSpan = document.createElement('span');
+                contentSpan.textContent = content;
+                entry.appendChild(contentSpan);
+                
+                consoleArea.appendChild(entry);
+                consoleArea.scrollTop = consoleArea.scrollHeight;
+            }
+            
+            // 连接到WebSocket服务器
+            function connect() {
+                updateStatus('connecting');
+                
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}`;
+                
+                socket = new WebSocket(wsUrl);
+                
+                socket.onopen = function() {
+                    addConsoleLog('WebSocket连接已建立');
+                    updateStatus('connected');
+                };
+                
+                socket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addConsoleLog(data, 'received');
+                        
+                        // 根据消息类型处理
+                        switch(data.type) {
+                            case 'welcome':
+                                // 显示欢迎消息
+                                break;
+                                
+                            case 'heartbeat':
+                                lastHeartbeat.textContent = `上次心跳: ${data.time}`;
+                                break;
+                                
+                            case 'typing_start':
+                                typingArea.textContent = '';
+                                if (!typingArea.contains(typingCursor)) {
+                                    typingArea.appendChild(typingCursor);
+                                }
+                                break;
+                                
+                            case 'typing_char':
+                                // 添加字符到打字区域
+                                const textNode = document.createTextNode(data.char);
+                                typingArea.insertBefore(textNode, typingCursor);
+                                typingArea.scrollTop = typingArea.scrollHeight;
+                                break;
+                                
+                            case 'typing_end':
+                                // 打字结束，移除光标
+                                if (typingCursor.parentNode === typingArea) {
+                                    typingArea.removeChild(typingCursor);
+                                }
+                                break;
+                        }
+                    } catch (error) {
+                        addConsoleLog(`无法解析消息: ${event.data}`, 'error');
+                    }
+                };
+                
+                socket.onclose = function(event) {
+                    addConsoleLog(`WebSocket连接已关闭: 代码=${event.code} 原因=${event.reason || '未知'}`);
+                    updateStatus('disconnected');
+                };
+                
+                socket.onerror = function(error) {
+                    addConsoleLog('WebSocket错误', 'error');
+                    console.error('WebSocket错误:', error);
+                    updateStatus('disconnected');
+                };
+            }
+            
+            // 断开WebSocket连接
+            function disconnect() {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.close();
+                    addConsoleLog('已手动断开连接');
+                }
+            }
+            
+            // 发送消息
+            function sendMessage(message, type = 'chat') {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    const data = {
+                        type: type,
+                        message: message,
+                        time: new Date().toISOString()
+                    };
+                    
+                    const jsonStr = JSON.stringify(data);
+                    socket.send(jsonStr);
+                    addConsoleLog(data, 'sent');
+                    return true;
+                } else {
+                    addConsoleLog('无法发送消息: WebSocket未连接', 'error');
+                    return false;
+                }
+            }
+            
+            // 发送自定义消息
+            function sendCustomMessage(jsonString) {
+                try {
+                    const data = JSON.parse(jsonString);
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(jsonString);
+                        addConsoleLog(data, 'sent');
+                        return true;
+                    } else {
+                        addConsoleLog('无法发送消息: WebSocket未连接', 'error');
+                        return false;
+                    }
+                } catch (error) {
+                    addConsoleLog('无效的JSON格式', 'error');
+                    return false;
+                }
+            }
+            
+            // 清除控制台
+            function clearConsole() {
+                consoleArea.innerHTML = '';
+                addConsoleLog('控制台已清除');
+            }
+            
+            // 事件监听器
+            connectButton.addEventListener('click', connect);
+            disconnectButton.addEventListener('click', disconnect);
+            
+            sendButton.addEventListener('click', function() {
+                const message = messageInput.value.trim();
+                if (message && sendMessage(message)) {
+                    // 发送成功后清空输入框
+                    messageInput.value = '';
+                }
+            });
+            
+            sendCustomButton.addEventListener('click', function() {
+                const jsonStr = customMessageInput.value.trim();
+                if (jsonStr && sendCustomMessage(jsonStr)) {
+                    // 发送成功后清空输入框
+                    customMessageInput.value = '';
+                }
+            });
+            
+            pingButton.addEventListener('click', function() {
+                sendMessage('ping', 'ping');
+            });
+            
+            clearButton.addEventListener('click', clearConsole);
+            
+            // Tab切换
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // 移除所有tabs和sections的active类
+                    tabs.forEach(t => t.classList.remove('active'));
+                    sections.forEach(s => s.classList.remove('active'));
+                    
+                    // 添加active类到当前tab和对应section
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(`${tabId}Section`).classList.add('active');
+                });
+            });
+            
+            // 示例按钮
+            example1.addEventListener('click', function() {
+                messageInput.value = "你好！请用打字效果回复这条消息。";
+            });
+            
+            example2.addEventListener('click', function() {
+                messageInput.value = "请生成一段关于WebSocket技术的描述，使用打字效果展示。";
+            });
+            
+            example3.addEventListener('click', function() {
+                messageInput.value = "请展示一段JavaScript代码示例，演示如何创建WebSocket连接。";
+            });
+            
+            // 自定义消息输入框的回车监听
+            customMessageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    sendCustomButton.click();
+                }
+            });
+            
+            // 初始化状态
+            updateStatus('disconnected');
+            addConsoleLog('WebSocket控制台已初始化');
+        });
+    </script>
+</body>
+</html>

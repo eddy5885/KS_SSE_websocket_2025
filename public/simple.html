@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE打字效果演示</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .output-container {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            margin-bottom: 20px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background-color: #333;
+            margin-left: 2px;
+            animation: cursor-blink 1s step-start infinite;
+        }
+        @keyframes cursor-blink {
+            50% { opacity: 0; }
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .example-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+        .code {
+            font-family: monospace;
+            background-color: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        pre {
+            white-space: pre-wrap;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSE打字效果演示</h1>
+        
+        <p>这是一个使用SSE (Server-Sent Events) 技术实现打字效果的演示。输入文本后点击发送按钮，服务器会逐字符返回输入的文本，模拟打字效果。</p>
+        
+        <div class="example-buttons">
+            <button id="exampleWeather">天气查询示例</button>
+            <button id="exampleDate">日期时间示例</button>
+            <button id="exampleList">列表示例</button>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="userInput" placeholder="输入任意文本..." />
+            <button id="sendButton">发送</button>
+        </div>
+        
+        <div class="output-container" id="outputContainer">
+            <!-- 输出内容将在这里动态添加 -->
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <h3>技术说明:</h3>
+        <p>
+            Server-Sent Events (SSE) 是一种允许服务器向客户端推送数据的技术。
+            与WebSocket不同，SSE是单向的，只能从服务器发送到客户端。前端使用
+            <span class="code">fetch API</span>与<span class="code">ReadableStream</span>
+            处理流数据。
+        </p>
+        <pre>
+fetch('/api/sse', { 
+    method: 'POST', 
+    body: JSON.stringify({ prompt }) 
+})
+.then(response => {
+    const reader = response.body.getReader();
+    return reader.read().then(function process({ done, value }) {
+        // 处理流数据...
+    });
+});</pre>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const outputContainer = document.getElementById('outputContainer');
+            const userInput = document.getElementById('userInput');
+            const sendButton = document.getElementById('sendButton');
+            const statusElement = document.getElementById('status');
+            const exampleWeather = document.getElementById('exampleWeather');
+            const exampleDate = document.getElementById('exampleDate');
+            const exampleList = document.getElementById('exampleList');
+            
+            // 生成随机UUID作为会话标识
+            const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+            
+            // 是否正在等待响应
+            let isWaitingResponse = false;
+            
+            // 光标元素
+            let cursor = document.createElement('span');
+            cursor.className = 'typing-cursor';
+            
+            // 事件监听
+            sendButton.addEventListener('click', () => sendMessage(userInput.value));
+            userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage(userInput.value);
+                }
+            });
+            
+            // 示例按钮事件
+            exampleWeather.addEventListener('click', () => {
+                userInput.value = "请告诉我今天的天气";
+                sendMessage(userInput.value);
+            });
+            
+            exampleDate.addEventListener('click', () => {
+                userInput.value = "现在的时间是什么?";
+                sendMessage(userInput.value);
+            });
+            
+            exampleList.addEventListener('click', () => {
+                userInput.value = "给我一个待办事项清单";
+                sendMessage(userInput.value);
+            });
+            
+            /**
+             * 发送消息到服务器
+             * @param {string} message - 用户输入的消息
+             */
+            function sendMessage(message) {
+                message = message.trim();
+                
+                if (message === '' || isWaitingResponse) {
+                    return;
+                }
+                
+                // 添加输入到输出容器
+                outputContainer.innerHTML += `<div style="margin-bottom: 10px;"><strong>输入:</strong> ${message}</div>`;
+                outputContainer.innerHTML += `<div><strong>输出:</strong> `;
+                
+                // 添加光标
+                outputContainer.appendChild(cursor);
+                
+                // 清空输入框
+                userInput.value = '';
+                
+                // 设置状态
+                isWaitingResponse = true;
+                sendButton.disabled = true;
+                exampleWeather.disabled = true;
+                exampleDate.disabled = true;
+                exampleList.disabled = true;
+                statusElement.textContent = '正在处理...';
+                
+                // 滚动到底部
+                outputContainer.scrollTop = outputContainer.scrollHeight;
+                
+                // 开始SSE连接
+                connectSSE(message);
+            }
+            
+            /**
+             * 建立SSE连接
+             * @param {string} prompt - 用户输入的消息
+             */
+            function connectSSE(prompt) {
+                // 创建一个文本节点用于添加内容
+                const textNode = document.createTextNode('');
+                
+                // 将光标移除当前位置
+                if (cursor.parentNode) {
+                    cursor.parentNode.removeChild(cursor);
+                }
+                
+                // 将文本节点添加到输出容器
+                outputContainer.lastElementChild.appendChild(textNode);
+                
+                // 将光标添加到文本节点后面
+                outputContainer.lastElementChild.appendChild(cursor);
+                
+                // 使用fetch API创建POST请求的SSE连接
+                fetch('/api/sse?uuid=' + encodeURIComponent(uuid), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt }),
+                }).then(response => {
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    
+                    // 处理和读取流数据
+                    function readStream() {
+                        return reader.read().then(({ done, value }) => {
+                            if (done) {
+                                finishTyping();
+                                return;
+                            }
+                            
+                            buffer += decoder.decode(value, { stream: true });
+                            
+                            // 处理事件流
+                            const lines = buffer.split('\n\n');
+                            buffer = lines.pop() || '';
+                            
+                            for (const line of lines) {
+                                const eventMatch = line.match(/^event: (.+)$/m);
+                                const dataMatch = line.match(/^data: (.+)$/m);
+                                
+                                if (eventMatch && dataMatch) {
+                                    const eventType = eventMatch[1];
+                                    const eventData = dataMatch[1];
+                                    
+                                    if (eventType === 'start') {
+                                        statusElement.textContent = '正在接收响应...';
+                                    } else if (eventType === 'end') {
+                                        finishTyping();
+                                    } else if (eventType === 'error') {
+                                        let errorMsg = '发生错误';
+                                        try {
+                                            const parsedError = JSON.parse(eventData);
+                                            errorMsg = parsedError.message || '未知错误';
+                                        } catch(e) {
+                                            errorMsg = eventData;
+                                        }
+                                        textNode.textContent += `\n[错误: ${errorMsg}]`;
+                                        finishTyping();
+                                    }
+                                } else if (dataMatch) {
+                                    // 处理数据行
+                                    try {
+                                        const parsedData = JSON.parse(dataMatch[1]);
+                                        if (parsedData.text) {
+                                            textNode.textContent += parsedData.text;
+                                            // 滚动到底部
+                                            outputContainer.scrollTop = outputContainer.scrollHeight;
+                                        }
+                                    } catch (e) {
+                                        console.error('解析数据错误:', e);
+                                    }
+                                }
+                            }
+                            
+                            return readStream();
+                        });
+                    }
+                    
+                    readStream().catch(error => {
+                        console.error('流读取错误:', error);
+                        textNode.textContent += `\n[错误: ${error.message}]`;
+                        finishTyping();
+                    });
+                }).catch(error => {
+                    console.error('连接错误:', error);
+                    finishTyping(`连接错误: ${error.message}`);
+                });
+            }
+            
+            /**
+             * 结束打字效果
+             * @param {string} error - 可选的错误信息
+             */
+            function finishTyping(error) {
+                // 恢复按钮状态
+                isWaitingResponse = false;
+                sendButton.disabled = false;
+                exampleWeather.disabled = false;
+                exampleDate.disabled = false;
+                exampleList.disabled = false;
+                
+                // 更新状态
+                statusElement.textContent = error ? `错误: ${error}` : '';
+                
+                // 移除光标并在最后添加换行
+                if (cursor.parentNode) {
+                    cursor.parentNode.removeChild(cursor);
+                }
+                
+                outputContainer.innerHTML += '</div><div style="margin-bottom: 20px;"></div>';
+                
+                // 滚动到底部
+                outputContainer.scrollTop = outputContainer.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>

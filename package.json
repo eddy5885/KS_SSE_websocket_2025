@@ -1,0 +1,31 @@
+{
+  "name": "sse-demo",
+  "version": "1.0.0",
+  "description": "AI聊天打字效果演示",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "client:dev": "cd client && npm run dev",
+    "client:build": "cd client && npm run build",
+    "client:preview": "cd client && npm run preview",
+    "build": "npm run client:build",
+    "dev:all": "concurrently \"npm run dev\" \"npm run client:dev\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@koa/cors": "^4.0.0",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "koa": "^2.14.2",
+    "koa-bodyparser": "^4.4.1",
+    "koa-router": "^12.0.1",
+    "koa-static": "^5.0.0",
+    "winston": "^3.11.0",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.2"
+  }
+}
