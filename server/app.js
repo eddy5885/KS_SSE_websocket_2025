@@ -42,14 +42,11 @@ const fs = require('fs');
 const initWebSocketServer = require('./utils/websocket');
 
 // 检查React客户端构建目录是否存在，如果存在则优先提供React应用
-const reactBuildPath = path.join(__dirname, 'client', 'dist');
-if (fs.existsSync(reactBuildPath)) {
-  console.log('检测到React客户端构建目录，优先提供React应用...');
-  app.use(serve(reactBuildPath));
-}
+const reactBuildPath = path.join(__dirname,'../', 'client', 'dist');
+
 
 // 提供传统静态资源（用于开发模式或作为后备方案）
-app.use(serve(__dirname + '/public'));
+app.use(serve(reactBuildPath));
 
 // 处理路由
 app.use(async (ctx, next) => {
@@ -59,20 +56,20 @@ app.use(async (ctx, next) => {
   }
   
   // 检查React客户端构建目录是否存在
-  const reactBuildPath = path.join(__dirname, 'client', 'dist');
-  if (fs.existsSync(reactBuildPath)) {
-    // 对于所有非API和非静态资源的请求，返回React的index.html（支持客户端路由）
-    const isStaticAsset = ctx.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico)$/);
-    if (!isStaticAsset) {
-      ctx.type = 'html';
-      ctx.body = fs.createReadStream(path.join(reactBuildPath, 'index.html'));
-      return;
-    }
-  } else if (ctx.path === '/') {
-    // 如果React构建不存在，则回退到传统HTML页面
-    ctx.redirect('/home.html');
-    return;
-  }
+  // const reactBuildPath = path.join(__dirname,'../', 'client', 'dist');
+  // if (fs.existsSync(reactBuildPath)) {
+  //   // 对于所有非API和非静态资源的请求，返回React的index.html（支持客户端路由）
+  //   const isStaticAsset = ctx.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico)$/);
+  //   if (!isStaticAsset) {
+  //     ctx.type = 'html';
+  //     ctx.body = fs.createReadStream(path.join(reactBuildPath, 'index.html'));
+  //     return;
+  //   }
+  // } else if (ctx.path === '/') {
+  //   // 如果React构建不存在，则回退到传统HTML页面
+  //   ctx.redirect('/home.html');
+  //   return;
+  // }
   
   await next();
 });
