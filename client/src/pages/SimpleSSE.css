@@ -1,0 +1,87 @@
+.sse-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+}
+
+.sse-title {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+.sse-output-container {
+  height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  margin-bottom: 20px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.sse-typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: #333;
+  margin-left: 2px;
+  animation: cursor-blink 1s step-start infinite;
+}
+
+@keyframes cursor-blink {
+  50% { opacity: 0; }
+}
+
+.sse-input-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sse-example-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.sse-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-family: inherit;
+}
+
+.sse-button {
+  padding: 10px 15px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.sse-button:hover {
+  background-color: #45a049;
+}
+
+.sse-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.sse-status {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+}

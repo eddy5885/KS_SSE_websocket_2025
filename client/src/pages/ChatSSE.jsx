@@ -1,109 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import styled from 'styled-components';
-
-const Container = styled.div`
-  max-width: 800px;
-  margin: 0 auto;
-  background-color: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-`;
-
-const Title = styled.h1`
-  text-align: center;
-  color: #2c3e50;
-  margin-bottom: 20px;
-`;
-
-const ChatContainer = styled.div`
-  height: 400px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 10px;
-  background-color: #f9f9f9;
-  margin-bottom: 20px;
-`;
-
-const Message = styled.div`
-  margin-bottom: 15px;
-  padding: 10px 15px;
-  border-radius: 18px;
-  max-width: 80%;
-  word-wrap: break-word;
-`;
-
-const UserMessage = styled(Message)`
-  background-color: #dcf8c6;
-  margin-left: auto;
-  margin-right: 10px;
-  text-align: right;
-  border-bottom-right-radius: 5px;
-`;
-
-const AIMessage = styled(Message)`
-  background-color: #f1f0f0;
-  margin-left: 10px;
-  border-bottom-left-radius: 5px;
-  
-  &.typing::after {
-    content: '▌';
-    animation: cursor-blink 1s step-start infinite;
-  }
-  
-  @keyframes cursor-blink {
-    50% { opacity: 0; }
-  }
-`;
-
-const PreText = styled.pre`
-  white-space: pre-wrap;
-  margin: 0;
-  font-family: inherit;
-`;
-
-const InputContainer = styled.div`
-  display: flex;
-  gap: 10px;
-`;
-
-const Textarea = styled.textarea`
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-family: inherit;
-  resize: none;
-  height: 60px;
-`;
-
-const Button = styled.button`
-  padding: 0 20px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background-color 0.3s;
-  
-  &:hover {
-    background-color: #45a049;
-  }
-  
-  &:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-  }
-`;
-
-const StatusText = styled.div`
-  margin-top: 10px;
-  font-size: 14px;
-  color: #666;
-  text-align: center;
-`;
+import './ChatSSE.css';
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -210,7 +106,7 @@ const Chat = () => {
                 try {
                   const parsedError = JSON.parse(eventData);
                   errorMessage = parsedError.message || '未知错误';
-                } catch (e) {
+                } catch {
                   errorMessage = eventData || '未知错误';
                 }
                 finishResponseMessage(messageId, `错误：${errorMessage}`);
@@ -277,44 +173,46 @@ const Chat = () => {
   };
 
   return (
-    <Container>
-      <Title>AI对话打字效果演示</Title>
+    <div className="chat-container">
+      <h2 className="chat-title">AI对话打字效果演示</h2>
       
-      <ChatContainer ref={chatContainerRef}>
+      <div className="chat-messages" ref={chatContainerRef}>
         {messages.map((message) => (
           message.type === 'user' ? (
-            <UserMessage key={message.id}>
-              <PreText>{message.content}</PreText>
-            </UserMessage>
+            <div key={message.id} className="message user-message">
+              <pre className="pre-text">{message.content}</pre>
+            </div>
           ) : (
-            <AIMessage 
+            <div 
               key={message.id} 
-              className={message.isTyping ? 'typing' : ''}
+              className={`message ai-message ${message.isTyping ? 'typing' : ''}`}
             >
-              <PreText>{message.content}</PreText>
-            </AIMessage>
+              <pre className="pre-text">{message.content}</pre>
+            </div>
           )
         ))}
-      </ChatContainer>
+      </div>
       
-      <InputContainer>
-        <Textarea 
+      <div className="chat-input-container">
+        <textarea 
+          className="chat-textarea"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="请输入您的问题..."
           disabled={isWaitingResponse}
         />
-        <Button 
+        <button 
+          className="chat-button"
           onClick={handleSendMessage}
           disabled={isWaitingResponse || inputText.trim() === ''}
         >
           发送
-        </Button>
-      </InputContainer>
+        </button>
+      </div>
       
-      <StatusText>{status}</StatusText>
-    </Container>
+      <div className="chat-status">{status}</div>
+    </div>
   );
 };
 

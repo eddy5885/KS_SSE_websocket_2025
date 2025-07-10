@@ -1,13 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import Home from './pages/Home';
 import SimpleSSE from './pages/SimpleSSE';
-import Chat from './pages/Chat';
+import ChatSSE from './pages/ChatSSE';
+import Test from './pages/Test';
+
 import WebSocketDemo from './pages/WebSocketDemo';
 
 // 样式化组件
 const AppContainer = styled.div`
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   background-color: #f5f5f5;
   min-height: 100vh;
   padding: 20px;
@@ -68,7 +68,6 @@ function App() {
         <Nav>
           <Logo>SSE & WebSocket 演示</Logo>
           <NavLinks>
-            <StyledLink to="/">首页</StyledLink>
             <StyledLink to="/simple">简单SSE</StyledLink>
             <StyledLink to="/chat">聊天SSE</StyledLink>
             <StyledLink to="/websocket">WebSocket</StyledLink>
@@ -76,15 +75,12 @@ function App() {
         </Nav>
 
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route index element={<SimpleSSE />} />
           <Route path="/simple" element={<SimpleSSE />} />
-          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat" element={<ChatSSE />} />
+          <Route path="/test" element={<Test />} />
           <Route path="/websocket" element={<WebSocketDemo />} />
         </Routes>
-
-        <Footer>
-          SSE & WebSocket Demo - 2025
-        </Footer>
       </AppContainer>
     </Router>
   )

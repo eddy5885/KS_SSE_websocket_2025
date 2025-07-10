@@ -1,110 +1,251 @@
-const { setCache, getCache } = require('../utils/fileCache');
-const axios = require('../libs/axios');
+const axios = require("../libs/axios");
+const crypto = require("crypto");
 
-// 非流式响应
-async function postData(ctx) {
-  ctx.set('Access-Control-Allow-Origin', '*');
-  ctx.set('Access-Control-Allow-Methods', 'POST');
+const aiToken = "hP8jkofGDzGJdQJyNITNzu8q2oDuoG4d";
+const wps_uid = 9036;
+const product_name = "wps_aigctest_campusexam";
+const intention_code = "saas_training_exam";
+const AI_HOST_URL = "ai-gateway.wps.cn";
 
-  const { uuid } = ctx.request.query;
-  let { prompt = '' } = ctx.request.body;
+function generateActionId() {
+  return crypto.randomBytes(16).toString("hex");
+}
+const dev = "development";
+//非流式响应
+async function Chat(ctx) {
+  ctx.set("Access-Control-Allow-Origin", "*");
+  ctx.set("Access-Control-Allow-Methods", "POST");
+
+  let { prompt = "" } = ctx.request.body;
   prompt = prompt.trim();
-  console.log('uuid', uuid);
-  
+
   if (!prompt) {
-    throw { code: -1, message: 'prompt为空' };
+    throw { code: -1, message: "prompt为空" };
   }
-  
-  const responseData = {
-    code: 200,
-    data: `您输入的内容是：${prompt}。这是一个非流式响应示例。`,
-    msg: 'success',
-    timeStart: Date.now(),
-    timeEnd: Date.now() + 500,
-    timeSpend: 500
+  const ret = {
+    code: 0,
+    data: {},
   };
-  
+  const headers = {
+    Authorization: "Bearer " + aiToken,
+    "AI-Gateway-Uid": wps_uid,
+    "AI-Gateway-Product-Name": product_name,
+    "AI-Gateway-Intention-Code": intention_code,
+    "X-Action-Id": generateActionId(),
+    "Content-Type": "application/json",
+  };
+
+  const options = {};
+  options.headers = headers;
+  if (dev === "development") {
+    options.proxy = {
+      protocol: "http",
+      host: "127.0.0.1",
+      port: 8899,
+    };
+  }
+  const res = await axios.post(
+    "http://" + AI_HOST_URL + "/api/v2/llm/chat",
+    {
+      stream: false,
+      messages: [
+        {
+          content: prompt,
+          role: "user", //枚举值需要固定
+        },
+      ],
+
+      provider: "azure", //模型厂商
+      model: "gpt-4", // 对应官网的model
+      version: "turbo-2024-04-09", // model的版本，非必填
+      base_llm_arguments: {
+        temperature: 0.7,
+        top_p: 1,
+        top_k: 1,
+      },
+      retry_strategy: {
+        retry_count: 1,
+        timeout: 60,
+      },
+    },
+    options
+  );
+  if (res.code === "Success") {
+    ret.data = res?.choices[0]?.text;
+  } else {
+    ret.code = -1;
+  }
+
   // 返回结果
-  ctx.body = responseData;
+  ctx.body = ret;
 }
 
-// SSE流式响应接口 - 简单示例
-async function sseData(ctx) {
-  // 设置状态码为200
-  ctx.status = 200;
-  ctx.set('Content-Type', 'text/event-stream');
-  ctx.set('Cache-Control', 'no-cache');
-  ctx.set('Connection', 'keep-alive');
-  ctx.set('Access-Control-Allow-Origin', '*');
 
-  const { uuid } = ctx.request.query;
-  let { prompt = '' } = ctx.request.body;
+// 流式响应处理
+async function ChatStream(ctx) {
+  ctx.set("Access-Control-Allow-Origin", "*");
+  ctx.set("Access-Control-Allow-Methods", "POST");
+
+  let { prompt = "" } = ctx.request.body;
   prompt = prompt.trim();
-  
+
   if (!prompt) {
-    ctx.status = 400;
-    ctx.body = 'event: error\ndata: prompt为空\n\n';
-    return;
+    throw { code: -1, message: "prompt为空" };
   }
   
-  // 获取响应流
-  const stream = ctx.res;
+  // 配置响应为SSE格式
+  ctx.set("Content-Type", "text/event-stream");
+  ctx.set("Cache-Control", "no-cache");
+  ctx.set("Connection", "keep-alive");
+  
+  // 启动响应流
+  const sseStream = ctx.res;
   
   try {
-    // 发送开始事件
-    stream.write('event: start\ndata: 开始响应\n\n');
+    const headers = {
+      Authorization: "Bearer " + aiToken,
+      "AI-Gateway-Uid": wps_uid,
+      "AI-Gateway-Product-Name": product_name,
+      "AI-Gateway-Intention-Code": intention_code,
+      "X-Action-Id": generateActionId(),
+      "Content-Type": "application/json",
+    };
+
+    const options = {
+      headers,
+      responseType: 'stream', // 重要：设置响应类型为流
+      onDownloadProgress: (event) => {
+        // 可选：处理下载进度
+      }
+    };
     
-    // 准备模拟数据 - 这里可以根据prompt生成不同的响应
-    let responseData;
-    
-    if (prompt.includes('天气')) {
-      responseData = '今天天气晴朗，温度25°C，微风，适合户外活动。明天可能有小雨，建议携带雨具。后天转晴，气温回升到28°C。';
-    } else if (prompt.includes('时间') || prompt.includes('日期')) {
-      const now = new Date();
-      responseData = `现在是北京时间：${now.toLocaleString('zh-CN')}，今天是${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日。`;
-    } else if (prompt.includes('列表') || prompt.includes('清单')) {
-      responseData = '以下是待办事项清单：\n1. 完成项目报告\n2. 安排团队会议\n3. 准备演示文稿\n4. 联系客户确认需求\n5. 更新项目进度表\n6. 审核代码提交';
-    } else {
-      responseData = `您的输入是：${prompt}\n\n这是一个模拟的长文本响应，演示SSE的渐进式显示效果。Server-Sent Events (SSE) 是一种允许服务器向客户端推送数据的技术。与WebSocket不同，SSE是单向的，只能从服务器发送到客户端。SSE非常适合需要服务器实时推送数据到浏览器的场景，比如股票价格更新、社交媒体通知、新闻提醒等。`;
+    if (dev === "development") {
+      options.proxy = {
+        protocol: "http",
+        host: "127.0.0.1",
+        port: 8899,
+      };
     }
     
-    // 模拟字符一个个发送的效果
-    const chars = responseData.split('');
-    
-    // 逐字符发送
-    for (let i = 0; i < chars.length; i++) {
-      // 随机延迟，模拟打字效果
-      await new Promise(resolve => setTimeout(resolve, Math.random() * 50 + 20));
-      
-      // 发送当前字符
-      stream.write(`data: ${JSON.stringify({ text: chars[i] })}\n\n`);
-    }
-    
-    // 发送结束事件
-    stream.write('event: end\ndata: 响应结束\n\n');
-    
+    // 发送流式请求
+    const response = await axios.post(
+      "http://" + AI_HOST_URL + "/api/v2/llm/chat",
+      {
+        stream: true,
+        messages: [
+          {
+            content: prompt,
+            role: "user",
+          },
+        ],
+        provider: "azure",
+        model: "gpt-4",
+        version: "turbo-2024-04-09",
+        base_llm_arguments: {
+          temperature: 0.7,
+          top_p: 1,
+          top_k: 1,
+        },
+        retry_strategy: {
+          retry_count: 1,
+          timeout: 60,
+        },
+      },
+      options
+    );
+
+    // 处理流式响应
+    await processStreamResponse(response, sseStream);
+
   } catch (error) {
-    console.error('SSE错误:', error);
-    stream.write(`event: error\ndata: ${JSON.stringify({ message: '服务器错误' })}\n\n`);
-  } finally {
-    ctx.respond = false; // 防止Koa自动发送响应
-    ctx.res.end();
+    console.error('调用API时发生错误:', error);
+    // 处理错误并返回
+    ctx.status = 500;
+    ctx.body = {
+      code: -1,
+      message: '服务器错误',
+      error: error.message
+    };
   }
 }
 
-// 检查健康状态的接口
-async function getData(ctx) {
-  const headers = ctx.request.headers;
-  console.log('headers', headers);
-
-  ctx.body = {
-    code: 0,
-    data: headers,
-  };
+// 处理流式响应（优化版）
+async function processStreamResponse(axiosResponse, outputStream) {
+  let fullResponse = '';
+  let isDone = false;
+  
+  // 监听响应流数据
+  return new Promise((resolve, reject) => {
+    axiosResponse
+      .on('data', (chunk) => {
+        try {
+          // 解码二进制数据为文本
+          const text = chunk.toString('utf-8');
+          // 按行分割SSE数据
+          const lines = text.split('\n');
+          
+          lines.forEach(line => {
+            if (line.trim() === '') return;
+            
+            // 处理SSE格式的响应块
+            if (line.startsWith('data:')) {
+              const data = line.substring('data:'.length).trim();
+              
+              // 检查是否为结束标记
+              if (data === '[DONE]') {
+                isDone = true;
+                outputStream.write('data: [DONE]\n\n'); // 发送结束标记
+                outputStream.end(); // 结束响应流
+                resolve(fullResponse);
+                return;
+              }
+              
+              try {
+                // 解析JSON数据
+                const parsedData = JSON.parse(data);
+                console.log('接收到数据:', parsedData);
+                if (parsedData.choices && parsedData.choices[0]) {
+                  const content = parsedData.choices[0].text;
+                  if (content) {
+                    console.log(content); // 输出模型生成的内容
+                    fullResponse += content;
+                    // 发送到客户端
+                    outputStream.write(`data: ${JSON.stringify({ content })}\n\n`);
+                  }
+                }
+                
+                // 处理usage信息（如果有）
+                if (parsedData.usage) {
+                  console.log('Token用量统计:', parsedData.usage);
+                }
+              } catch (parseError) {
+                console.warn('解析响应块时出错:', parseError.message, data);
+                // 发送错误信息到客户端
+                outputStream.write(`data: ${JSON.stringify({ error: parseError.message })}\n\n`);
+              }
+            }
+          });
+        } catch (error) {
+          console.error('处理流数据时出错:', error);
+          reject(error);
+        }
+      })
+      .on('end', () => {
+        if (!isDone) {
+          console.log('响应流已结束');
+          outputStream.end();
+        }
+        resolve(fullResponse);
+      })
+      .on('error', (error) => {
+        console.error('响应流错误:', error);
+        outputStream.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        outputStream.end();
+        reject(error);
+      });
+  });
 }
-
 module.exports = {
-  postData,
-  getData,
-  sseData
+  Chat,
+  ChatStream
 };
