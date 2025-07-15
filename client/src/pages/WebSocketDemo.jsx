@@ -206,30 +206,7 @@ const WebSocketDemo = () => {
         {typingContent}
         {showCursor && <span className="ws-typing-cursor" ref={typingCursorRef}></span>}
       </div>
-      
-      <div className="ws-explanation">
-        <h3>WebSocket vs SSE 比较</h3>
-        <p>
-          <strong>WebSocket</strong>是一种在单个TCP连接上提供全双工通信通道的协议。WebSocket允许服务器和客户端之间进行双向实时通信。
-          相比之下，<strong>Server-Sent Events (SSE)</strong>是单向的，只允许服务器向客户端推送数据。
-        </p>
-        <p>
-          <strong>WebSocket优点：</strong>
-        </p>
-        <ul>
-          <li>支持双向通信</li>
-          <li>更好的实时性能</li>
-          <li>支持二进制数据传输</li>
-        </ul>
-        <p>
-          <strong>SSE优点：</strong>
-        </p>
-        <ul>
-          <li>实现简单（基于HTTP）</li>
-          <li>自动重连机制</li>
-          <li>与现有HTTP基础设施更兼容</li>
-        </ul>
-      </div>
+  
     </div>
   );
 };

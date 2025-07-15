@@ -1,7 +1,7 @@
 const axios = require("../libs/axios");
 const crypto = require("crypto");
 
-const aiToken = "hP8jkofGDzGJdQJyNITNzu8q2oDuoG4d";
+const aiToken = "2IEmcPrMnP734kzk0YmSNh87FHNCVjQf";
 const wps_uid = 9036;
 const product_name = "wps_aigctest_campusexam";
 const intention_code = "saas_training_exam";
@@ -90,13 +90,18 @@ async function ChatStream(ctx) {
   prompt = prompt.trim();
 
   if (!prompt) {
-    throw { code: -1, message: "prompt为空" };
+    ctx.status = 400;
+    ctx.body = { code: -1, message: "prompt为空" };
+    return;
   }
   
   // 配置响应为SSE格式
   ctx.set("Content-Type", "text/event-stream");
   ctx.set("Cache-Control", "no-cache");
   ctx.set("Connection", "keep-alive");
+  
+  // 设置成功状态码
+  ctx.status = 200;
   
   // 启动响应流
   const sseStream = ctx.res;
@@ -159,13 +164,14 @@ async function ChatStream(ctx) {
 
   } catch (error) {
     console.error('调用API时发生错误:', error);
-    // 处理错误并返回
-    ctx.status = 500;
-    ctx.body = {
-      code: -1,
-      message: '服务器错误',
-      error: error.message
-    };
+    // 发送错误事件到SSE流
+    try {
+      sseStream.write(`event: error\n`);
+      sseStream.write(`data: ${JSON.stringify({ message: '服务器错误', error: error.message })}\n\n`);
+      sseStream.end();
+    } catch (streamError) {
+      console.error('写入错误流时出错:', streamError);
+    }
   }
 }
 
@@ -173,6 +179,10 @@ async function ChatStream(ctx) {
 async function processStreamResponse(axiosResponse, outputStream) {
   let fullResponse = '';
   let isDone = false;
+  
+  // 发送开始事件
+  outputStream.write(`event: start\n`);
+  outputStream.write(`data: ${JSON.stringify({ message: '开始接收响应' })}\n\n`);
   
   // 监听响应流数据
   return new Promise((resolve, reject) => {
@@ -194,7 +204,8 @@ async function processStreamResponse(axiosResponse, outputStream) {
               // 检查是否为结束标记
               if (data === '[DONE]') {
                 isDone = true;
-                outputStream.write('data: [DONE]\n\n'); // 发送结束标记
+                outputStream.write(`event: end\n`);
+                outputStream.write(`data: ${JSON.stringify({ message: '响应完成' })}\n\n`);
                 outputStream.end(); // 结束响应流
                 resolve(fullResponse);
                 return;
@@ -209,8 +220,8 @@ async function processStreamResponse(axiosResponse, outputStream) {
                   if (content) {
                     console.log(content); // 输出模型生成的内容
                     fullResponse += content;
-                    // 发送到客户端
-                    outputStream.write(`data: ${JSON.stringify({ content })}\n\n`);
+                    // 发送到客户端，使用标准SSE格式
+                    outputStream.write(`data: ${JSON.stringify({ text: content })}\n\n`);
                   }
                 }
                 
@@ -220,26 +231,32 @@ async function processStreamResponse(axiosResponse, outputStream) {
                 }
               } catch (parseError) {
                 console.warn('解析响应块时出错:', parseError.message, data);
-                // 发送错误信息到客户端
-                outputStream.write(`data: ${JSON.stringify({ error: parseError.message })}\n\n`);
+                // 发送错误事件到客户端
+                outputStream.write(`event: error\n`);
+                outputStream.write(`data: ${JSON.stringify({ message: parseError.message })}\n\n`);
               }
             }
           });
         } catch (error) {
           console.error('处理流数据时出错:', error);
+          outputStream.write(`event: error\n`);
+          outputStream.write(`data: ${JSON.stringify({ message: error.message })}\n\n`);
           reject(error);
         }
       })
       .on('end', () => {
         if (!isDone) {
           console.log('响应流已结束');
+          outputStream.write(`event: end\n`);
+          outputStream.write(`data: ${JSON.stringify({ message: '响应完成' })}\n\n`);
           outputStream.end();
         }
         resolve(fullResponse);
       })
       .on('error', (error) => {
         console.error('响应流错误:', error);
-        outputStream.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        outputStream.write(`event: error\n`);
+        outputStream.write(`data: ${JSON.stringify({ message: error.message })}\n\n`);
         outputStream.end();
         reject(error);
       });
